@@ -1,0 +1,54 @@
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from .models import Expenses, ExpensesDetails, User, IncomeSource
+
+class UserAdmin(BaseUserAdmin):
+    # Define what fields to display in the admin list view
+    list_display = ('email', 'first_name', 'last_name', 'phone_number', 'user_type', 'is_active', 'is_staff')
+    
+    # Define fields to be used in the detail/edit view
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'date_of_birth', 'phone_number', 'address', 'pincode', 'latitude', 'longitude', 'gender')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+        ('OTP Info', {'fields': ('otp', 'otp2')}),
+        ('User Type', {'fields': ('user_type',)}),
+    )
+    
+    # Customize how the user is created in the admin form
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'user_type'),
+        }),
+    )
+    
+    search_fields = ('email', 'first_name', 'last_name', 'phone_number')
+    ordering = ('email',)
+    filter_horizontal = ('groups', 'user_permissions',)
+
+# Register the customized UserAdmin
+admin.site.register(User, UserAdmin)
+
+
+
+class IncomeSourceAdmin(admin.ModelAdmin):
+    list_display = ("user","date", "month","amount", "income_source","amount","unutilized_amount","utilized_amount")
+admin.site.register(IncomeSource, IncomeSourceAdmin)
+
+
+
+
+class ExpensesAdmin(admin.ModelAdmin):
+    list_display = ("expense_type","date", "month","amount","spent_amount","pending_amount","status")
+admin.site.register(Expenses, ExpensesAdmin)
+
+
+
+
+
+
+class ExpensesDetailsAdmin(admin.ModelAdmin):
+    list_display = ("created_at","expense","date", "month","user","amount","notes")
+admin.site.register(ExpensesDetails, ExpensesDetailsAdmin)
