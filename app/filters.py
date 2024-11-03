@@ -44,7 +44,11 @@ class IncomeSourceFilter(django_filters.FilterSet):
     
     class Meta:
         model = IncomeSource
-        fields = ["date", "month", "user"]
+       
+        fields = {
+            
+            'month': ['exact'],
+        }
 
 
 
