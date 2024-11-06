@@ -419,6 +419,7 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
                 'total_spent_amount': total_spent_amount,
                 'total_pending_amount': total_pending_amount,
                 'available_amount': available_amount,
+                'amt_diff': available_amount-total_pending_amount,
                 'results': serializer.data
             }
             return self.get_paginated_response(response_data)

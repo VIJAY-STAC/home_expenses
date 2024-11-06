@@ -24,7 +24,7 @@ class ExpensesQueryset:
     def custom_get_queryset(self):
         if self.action =="list":
             queryset = Expenses.objects.all()
-            return queryset.order_by("-created_at")
+            return queryset.order_by("-status")
         
 class ExpensesDetailsQueryset:
     def custom_get_queryset(self):
