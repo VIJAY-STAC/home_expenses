@@ -79,25 +79,26 @@ WSGI_APPLICATION = 'home_expenses.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-
 DATABASES = {
-     'default': {
-         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-         'NAME': env("POSTGRES_DB"),
-         'USER': env("POSTGRES_USER"),
-         'PASSWORD': env("POSTGRES_PASSWORD"),
-         'HOST': env("POSTGRES_HOST"),
-         'PORT': env("POSTGRES_PORT"),
-         'ATOMIC_REQUESTS': True,
-     }
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+
+
+# DATABASES = {
+#      'default': {
+#          'ENGINE': 'django.contrib.gis.db.backends.postgis',
+#          'NAME': env("POSTGRES_DB"),
+#          'USER': env("POSTGRES_USER"),
+#          'PASSWORD': env("POSTGRES_PASSWORD"),
+#          'HOST': env("POSTGRES_HOST"),
+#          'PORT': env("POSTGRES_PORT"),
+#          'ATOMIC_REQUESTS': True,
+#      }
+# }
 
 
 # Password validation
@@ -172,3 +173,37 @@ ALLOWED_HOSTS = ['192.168.1.100', 'localhost', '127.0.0.1','10.0.2.2','43.204.22
 
 
 
+
+
+
+
+"""
+
+
+cp /home/ubuntu/home_expenses/db.sqlite3 .
+cp /home/ubuntu/home_expenses/home_expenses/.env .
+sudo rm -r EMandai/
+git clone https://github.com/VIJAY-STAC/home_expenses.git
+cd home_expenses
+cp /home/ubuntu/db.sqlite3 .
+cd home_expenses/
+cp /home/ubuntu/.env .
+cd ..//..//
+sudo rm -r .env
+sudo rm -r db.sqlite3
+sudo systemctl restart gunicorn
+"""
+
+
+"""
+sudo apt-get update
+sudo apt-get install build-essential
+sudo apt-get install libpq-dev
+pip3 install psycopg2-binary
+
+
+
+
+
+
+"""
