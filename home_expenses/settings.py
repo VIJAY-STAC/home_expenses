@@ -168,7 +168,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 
 
-ALLOWED_HOSTS = ['192.168.1.100', 'localhost', '127.0.0.1','10.0.2.2','43.204.221.164','gharkharch.agency']
+ALLOWED_HOSTS = ['192.168.1.100', 'localhost', '127.0.0.1','10.0.2.2','gharkharch.agency']
 
 
 
@@ -205,5 +205,25 @@ pip3 install psycopg2-binary
 
 
 
+
+"""
+
+
+
+"""
+server {
+    listen 80;
+    server_name 43.204.98.26 gharkharch.agency;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /home/ubuntu/home_expenses;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/gunicorn.sock;
+    }
+}
 
 """
