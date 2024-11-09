@@ -134,7 +134,8 @@ class UserViewSet(viewsets.ModelViewSet, UserQueryset):
                 'user_type': user.user_type,
                 'pincode': user.pincode,
                 'latitude': user.latitude,
-                'longitude': user.longitude
+                'longitude': user.longitude,
+                "success": True
                
             }
 
