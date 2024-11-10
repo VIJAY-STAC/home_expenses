@@ -5,6 +5,7 @@ cd /home/ubuntu/home_expenses
 python manage.py makemigrations
 python manage.py migrate
 
+sudo rm -rf db.sqlite3
 cp /home/ubuntu/db.sqlite3 .
 chmod 664 db.sqlite3
 sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses
