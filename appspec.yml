@@ -22,10 +22,6 @@ hooks:
       - location: scripts/python_dependencies.sh
         timeout: 300
         runas: ubuntu
-
-      - location: scripts/migrate.sh
-        timeout: 300
-        runas: ubuntu
       - location: scripts/gunicorn.sh
         timeout: 300
         runas: ubuntu
@@ -37,7 +33,7 @@ hooks:
         timeout: 300
         runas: ubuntu
   ApplicationStart:
-      - location: scripts/start_app.sh
+      - location: scripts/migrate.sh
         timeout: 300
         runas: ubuntu
   
