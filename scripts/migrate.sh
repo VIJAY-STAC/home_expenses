@@ -1,23 +1,17 @@
-#!/bin/bash
-source /home/ubuntu/env/bin/activate
-cd /home/ubuntu/home_expenses
-cd home_expenses/
-cp /home/ubuntu/.env .
+source /home/ubuntu/env/bin/activate >> deployment_log.txt 2>&1
+cd /home/ubuntu/home_expenses >> deployment_log.txt 2>&1
+cd home_expenses/ >> deployment_log.txt 2>&1
+cp /home/ubuntu/.env . >> deployment_log.txt 2>&1
 
-cd ..
-cp /home/ubuntu/db.sqlite3 .
-chmod 664 db.sqlite3
-sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses
-chmod 775 /home/ubuntu/home_expenses
+cd .. >> deployment_log.txt 2>&1
+cp /home/ubuntu/db.sqlite3 . >> deployment_log.txt 2>&1
 
-python manage.py makemigrations
-python manage.py migrate
+python manage.py makemigrations >> deployment_log.txt 2>&1
+python manage.py migrate >> deployment_log.txt 2>&1
 
-cd ..//..//
-sudo rm -r .env
-sudo rm -r db.sqlite3
+cd ../.. >> deployment_log.txt 2>&1
+sudo rm -r .env >> deployment_log.txt 2>&1
+sudo rm -r db.sqlite3 >> deployment_log.txt 2>&1
 
-sudo service gunicorn restart 
-sudo service nginx restart
-
-
+sudo service gunicorn restart >> deployment_log.txt 2>&1
+sudo service nginx restart >> deployment_log.txt 2>&1
