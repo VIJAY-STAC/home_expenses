@@ -1,17 +1,29 @@
-source /home/ubuntu/env/bin/activate >> deployment_log.txt 2>&1
-cd /home/ubuntu/home_expenses >> deployment_log.txt 2>&1
-cd home_expenses/ >> deployment_log.txt 2>&1
-cp /home/ubuntu/.env . >> deployment_log.txt 2>&1
+# Activate the virtual environment
+source /home/ubuntu/env/bin/activate
 
-cd .. >> deployment_log.txt 2>&1
-cp /home/ubuntu/db.sqlite3 . >> deployment_log.txt 2>&1
+# Navigate to the home_expenses directory
+cd /home/ubuntu/home_expenses
+cd home_expenses/
 
-python manage.py makemigrations >> deployment_log.txt 2>&1
-python manage.py migrate >> deployment_log.txt 2>&1
+# Copy the environment file
+cp /home/ubuntu/.env .
 
-cd ../.. >> deployment_log.txt 2>&1
-sudo rm -r .env >> deployment_log.txt 2>&1
-sudo rm -r db.sqlite3 >> deployment_log.txt 2>&1
+# Move to the parent directory and copy the database
+cd ..
+cp /home/ubuntu/db.sqlite3 .
 
-sudo service gunicorn restart >> deployment_log.txt 2>&1
-sudo service nginx restart >> deployment_log.txt 2>&1
+# Fix permissions for db.sqlite3 to ensure Django can access it
+sudo chmod 666 /home/ubuntu/db.sqlite3
+
+# Run migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# Return to the original directory and clean up sensitive files
+cd ../..
+sudo rm -r .env
+sudo rm -r db.sqlite3
+
+# Restart services to apply changes
+sudo service gunicorn restart
+sudo service nginx restart
