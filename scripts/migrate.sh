@@ -1,5 +1,5 @@
 #!/bin/bash
-LOG_FILE="/home/ubuntu/deployment.log"
+LOG_FILE="/home/ubuntu/deployment2.log"
 
 log() {
   echo "$1" | tee -a $LOG_FILE
@@ -16,7 +16,7 @@ cd /home/ubuntu/home_expenses || { log "Failed to change directory"; exit 1; }
 # Set correct permissions for the project directory
 log "Setting permissions for project directory..."
 sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses &>> $LOG_FILE
-chmod 775 /home/ubuntu/home_expenses &>> $LOG_FILE
+sudo chmod -R 775 /home/ubuntu/home_expenses &>> $LOG_FILE
 
 # Copy .env file if it exists
 log "Copying .env file..."
