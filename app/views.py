@@ -101,7 +101,7 @@ class UserViewSet(viewsets.ModelViewSet, UserQueryset):
 
     def destroy(self, request, *args, **kwargs):  
         id = kwargs.get('pk')
-        if not request.user.is_superuser:
+        if not request.user.is_superuser and request.user.user_type != 'admin':
             return Response({"error":"permission not allowed."}, status=status.HTTP_403_FORBIDDEN)
         try:
             user=User.objects.get(id=id).delete()
