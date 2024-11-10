@@ -11,6 +11,9 @@ pip install gunicorn
 cd ..//..//
 cd home_expenses
 cp /home/ubuntu/db.sqlite3 .
+chmod 664 db.sqlite3
+sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses
+chmod 775 /home/ubuntu/home_expenses
 cd home_expenses/
 cp /home/ubuntu/.env .
 cd ..//..//
