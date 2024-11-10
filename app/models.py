@@ -36,6 +36,7 @@ class User(AbstractUser, PrimaryUUIDTimeStampedModel):
     user_type = models.CharField(
         null=False, blank=False, max_length=32, choices=USER_TYPES, 
     )
+
     
     
     @property
@@ -74,6 +75,7 @@ class IncomeSource(PrimaryUUIDTimeStampedModel):  # Remove AbstractUser inherita
     amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10)
     unutilized_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
     utilized_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10,default=0.0)
+    
 
 
     
@@ -98,6 +100,7 @@ class Expenses(PrimaryUUIDTimeStampedModel):
     spent_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
     pending_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
     status = models.CharField(max_length=30, choices=EXPENSES_STATUS, default="pending")
+    note=models.TextField(max_length=10, null=True, blank=True)
 
     def __str__(self):
             return self.expense_type.expense_type 

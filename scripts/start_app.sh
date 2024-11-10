@@ -1,9 +1,8 @@
 #!/usr/bin/bash 
 
 sed -i 's/\[]/\["65.0.222.195"]/' /home/ubuntu/home_expenses/home_expenses/settings.py
-
+python manage.py makemigrations  
 python manage.py migrate 
-python manage.py makemigrations     
 python manage.py collectstatic
 sudo service gunicorn restart
 sudo service nginx restart
