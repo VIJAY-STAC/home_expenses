@@ -1,20 +1,8 @@
-#!/usr/bin/bash 
+#!/bin/bash
 
 sed -i 's/\[]/\["65.0.222.195"]/' /home/ubuntu/home_expenses/home_expenses/settings.py
-python manage.py makemigrations  
-python manage.py migrate 
-python manage.py collectstatic
+/home/ubuntu/env/bin/python manage.py makemigrations  
+/home/ubuntu/env/bin/python manage.py migrate 
+/home/ubuntu/env/bin/python manage.py collectstatic --noinput
 sudo service gunicorn restart
 sudo service nginx restart
-#sudo tail -f /var/log/nginx/error.log
-#sudo systemctl reload nginx
-#sudo tail -f /var/log/nginx/error.log
-#sudo nginx -t
-#sudo systemctl restart gunicorn
-#sudo systemctl status gunicorn
-#sudo systemctl status nginx
-# Check the status
-#systemctl status gunicorn
-# Restart:
-#systemctl restart gunicorn
-#sudo systemctl status nginx
