@@ -103,7 +103,9 @@ class ExpensesSerializer(serializers.ModelSerializer):
             "amount",
             "spent_amount",
             "pending_amount",
-            "status"
+            "status",
+            "note",
+            "note2"
             
          )
         
