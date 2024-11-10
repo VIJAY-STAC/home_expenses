@@ -17,5 +17,10 @@ sudo apt-get update
 sudo apt-get install -y python3 python3-dev python3-pip python3-venv
 pip install --user --upgrade virtualenv
 
+
+#keep env and database same
+cp /home/ubuntu/home_expenses/db.sqlite3 .
+cp /home/ubuntu/home_expenses/home_expenses/.env .
+
 # delete app
 sudo rm -rf /home/ubuntu/home_expenses
