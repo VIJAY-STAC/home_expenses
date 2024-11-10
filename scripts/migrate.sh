@@ -1,33 +1,23 @@
 #!/bin/bash
 source /home/ubuntu/env/bin/activate
-cd /home/ubuntu/home_expenses 
-
-# Set correct permissions for the project directory
-sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses
-sudo chmod -R 775 /home/ubuntu/home_expenses 
-
-# Copy .env file if it exists
+cd /home/ubuntu/home_expenses
 cd home_expenses/
-cp /home/ubuntu/.env . 
+cp /home/ubuntu/.env .
 
-# Retain existing database file
 cd ..
-sudo cp /home/ubuntu/db.sqlite3 . 
-sudo chmod 664 db.sqlite3 
+cp /home/ubuntu/db.sqlite3 .
+chmod 664 db.sqlite3
+sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses
+chmod 775 /home/ubuntu/home_expenses
 
-
-# Run Django migrations
 python manage.py makemigrations
-python manage.py migrate 
+python manage.py migrate
 
+cd ..//..//
+sudo rm -r .env
+sudo rm -r db.sqlite3
 
-# Clean up temporary .env (optional; remove only if necessary)
+sudo service gunicorn restart 
+sudo service nginx restart
 
-sudo rm home_expenses/.env &>> $LOG_FILE
-sudo mv db.sqlite3 /home/ubuntu/
-
-
-# Restart services
-sudo service gunicorn restart
-sudo service nginx restart 
 
