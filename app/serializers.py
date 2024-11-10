@@ -73,8 +73,7 @@ class ExpensesTypeSerializer(serializers.ModelSerializer):
         fields = ( 
             "id",
             "created_at",
-            "expense_type",
-            "note"
+            "expense_type"
          )
 
 

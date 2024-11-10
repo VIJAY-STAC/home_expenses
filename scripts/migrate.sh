@@ -5,9 +5,6 @@ cd home_expenses/
 cp /home/ubuntu/.env .
 
 cd ..
-
-
-
 cp /home/ubuntu/db.sqlite3 .
 chmod 664 db.sqlite3
 sudo chown -R ubuntu:ubuntu /home/ubuntu/home_expenses
@@ -15,7 +12,6 @@ chmod 775 /home/ubuntu/home_expenses
 
 python manage.py makemigrations
 python manage.py migrate
-
 
 cd ..//..//
 sudo rm -r .env
