@@ -139,7 +139,7 @@ class ExpensesDetailsSerializer(serializers.ModelSerializer):
         return obj.user.full_name
     
     def get_income_source(self,obj):
-        return obj.income_sorce.user.full_name
+        return obj.income_sorce.user.full_name if obj.income_sorce else None    
     
     def get_expenses_name(self,obj):
         return obj.expense.expense_type.expense_type
