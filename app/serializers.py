@@ -119,6 +119,7 @@ class ExpensesSerializer(serializers.ModelSerializer):
 class ExpensesDetailsSerializer(serializers.ModelSerializer):
     expenses_name = serializers.SerializerMethodField()
     user_name = serializers.SerializerMethodField()
+    income_source = serializers.SerializerMethodField()
     class Meta:
         model = ExpensesDetails
         fields = ( 
@@ -129,12 +130,16 @@ class ExpensesDetailsSerializer(serializers.ModelSerializer):
             "date",
             "month",
             "amount",
-            "notes"
+            "notes",
+            "income_source"
 
         )
 
     def get_user_name(self,obj):
         return obj.user.full_name
+    
+    def get_income_source(self,obj):
+        return obj.income_sorce.user.full_name
     
     def get_expenses_name(self,obj):
         return obj.expense.expense_type.expense_type
@@ -152,6 +157,19 @@ class ExpensesDetailsCreateSerializer(serializers.ModelSerializer):
             "date",
             "month",
             "amount",
+            "notes",
+            
+        )
+
+
+class ExpensesDetailsUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpensesDetails
+        fields = ( 
+            "expense",
+            "user",
+            "date",
+            "month",
             "notes"
         )
 

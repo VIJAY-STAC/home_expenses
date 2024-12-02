@@ -9,7 +9,7 @@ from django.utils.crypto import get_random_string
 from django.conf import settings
 from django.core.mail import send_mail
 
-from .models import IncomeSource
+from .models import ExpensesDetails, IncomeSource
 
 def verify_otp(user_id, otp):
     PASSWORD_RESET_KEY = "user_password_reset_key.{otp_key}"
@@ -71,26 +71,33 @@ def send_custom_email(recipient_email, subject, body):
 
 
 
-def spend_money(expense, amt, incomes):
-    new_spent_amt = float(expense.spent_amount) + amt
+def spend_money(expense, amt, incomes, request):
+    user_id = request.data.get('user')
+    date=request.data.get('date')
+    month=request.data.get('month')
+    notes=request.data.get('notes')
+    new_spent_amt = float(expense.spent_amount) + float(amt)
     expense.spent_amount= new_spent_amt
     expense.pending_amount = float(expense.amount) - new_spent_amt
     if expense.amount<=new_spent_amt:
         expense.status="done"
     expense.save()
 
+
+    create_expense_dtl = []
     update_rows = []
     amount = amt
     for income in incomes:
         if amount!=0.0:
             if amount > income.unutilized_amount:
+                action_amt= income.unutilized_amount
                 print("amout is less")
                 amount = amount - float(income.unutilized_amount)
-                income.utilized_amount = float(income.utilized_amount) + float(income.unutilized_amount)
+                income.utilized_amount = float(income.utilized_amount) + float(action_amt)
                 income.unutilized_amount= 0.0
                 update_rows.append(income)
-
             elif amount < income.unutilized_amount:
+                action_amt= amount
                 print("amout is less")
                 income.utilized_amount = float(income.utilized_amount) + amount
                 income.unutilized_amount= float(income.unutilized_amount) - amount
@@ -98,14 +105,33 @@ def spend_money(expense, amt, incomes):
                 amount= 0.0
 
             elif amount == income.unutilized_amount:
+                action_amt= amount
                 print("amout perfect match")
                 income.utilized_amount = float(income.utilized_amount) + amount
                 income.unutilized_amount= float(income.unutilized_amount) - amount
-                print(float(income.utilized_amount) + amount)
-                print(float(income.unutilized_amount) - amount)
                 update_rows.append(income)
                 amount= 0.0
+
+            
+            create_expense_dtl.append(
+                ExpensesDetails(
+                    expense=expense,
+                    user_id=user_id,
+                    income_sorce=income,
+                    date=date,
+                    month=month,
+                    amount=action_amt,
+                    notes=notes
+                )
+
+            )
+
+    if create_expense_dtl:
+        ExpensesDetails.objects.bulk_create(create_expense_dtl)
+
     if update_rows:
         print("inside update_rows")
         IncomeSource.objects.bulk_update(update_rows, ["utilized_amount", "unutilized_amount"])
+
+    
     return True

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Expenses, ExpensesDetails, User, IncomeSource
+from .models import BulkBuyerResvStock, BusinessTermsTable, Expenses, ExpensesDetails, User, IncomeSource
 
 class UserAdmin(BaseUserAdmin):
     # Define what fields to display in the admin list view
@@ -34,7 +34,7 @@ admin.site.register(User, UserAdmin)
 
 
 class IncomeSourceAdmin(admin.ModelAdmin):
-    list_display = ("user","date", "month","amount", "income_source","amount","unutilized_amount","utilized_amount")
+    list_display = ("created_at","user","date", "month","amount", "income_source","amount","unutilized_amount","utilized_amount")
 admin.site.register(IncomeSource, IncomeSourceAdmin)
 
 
@@ -50,5 +50,17 @@ admin.site.register(Expenses, ExpensesAdmin)
 
 
 class ExpensesDetailsAdmin(admin.ModelAdmin):
-    list_display = ("created_at","expense","date", "month","user","amount","notes")
+    list_display = ("created_at","expense","income_sorce","date", "month","user","amount","notes")
 admin.site.register(ExpensesDetails, ExpensesDetailsAdmin)
+
+
+
+
+class BusinessTermsTableAdmin(admin.ModelAdmin):
+    list_display = ("id","created_at","term_name","term_value")
+admin.site.register(BusinessTermsTable, BusinessTermsTableAdmin)
+
+
+class BulkBuyerResvStockAdmin(admin.ModelAdmin):
+    list_display = ("id","created_at","modified_at","last_synced_at","notes")
+admin.site.register(BulkBuyerResvStock, BulkBuyerResvStockAdmin)

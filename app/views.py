@@ -9,15 +9,15 @@ from django.conf import settings
 from django.dispatch import receiver
 from rest_framework.decorators import action
 from django.db.models import Sum, F
-
+from django.utils import timezone
 from .permissions import IsInternalAdmin
 from .pagination import CommanPagination
-
+from django.db.models.functions import TruncSecond
 from .querysets import ExpensesDetailsQueryset, ExpensesQueryset, ExpensesTypeSourceQueryset, IncomeSourceQueryset, UserQueryset
 from .filters import ExpensesDetailsFilter, ExpensesFilter, ExpensesTypeFilter, IncomeSourceFilter, UserFilter
 from .utils import generate_otp_and_key, send_custom_email, spend_money
-from .serializers import ExpensesCreateSerializer, ExpensesDetailsCreateSerializer, ExpensesDetailsSerializer, ExpensesSerializer, ExpensesTypeSerializer, FamilyMemberSerializer, IncomeSourceCreateSerializer, IncomeSourceSerializer, UserRoleSerializer, UserSerializer
-from .models import Expenses, ExpensesType, IncomeSource, User, ExpensesDetails
+from .serializers import ExpensesCreateSerializer, ExpensesDetailsCreateSerializer, ExpensesDetailsSerializer, ExpensesDetailsUpdateSerializer, ExpensesSerializer, ExpensesTypeSerializer, FamilyMemberSerializer, IncomeSourceCreateSerializer, IncomeSourceSerializer, UserRoleSerializer, UserSerializer
+from .models import BulkBuyerResvStock, BusinessTermsTable, Expenses, ExpensesType, IncomeSource, User, ExpensesDetails
 from datetime import datetime, timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import Group
@@ -381,7 +381,7 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
         
         id = kwargs.get('pk')
         if not id:
-            return Response({"error":"Income source id is missing"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error":"Expense id is missing."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             expense=Expenses.objects.get(id=id)
         except IncomeSource.DoesNotExist:
@@ -407,11 +407,10 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
         sd = request.query_params.get('sd', None)
         ed = request.query_params.get('ed', None)
         month = request.query_params.get('month', None)
-        
 
-
-        available_amount=IncomeSource.objects.filter(month=month).aggregate(total_unutilized_amount=Sum('unutilized_amount'))['total_unutilized_amount'] or 0
-       
+        if not month:
+            month = datetime.now().strftime('%B')
+        available_amount=IncomeSource.objects.filter(month__icontains=month).aggregate(total_unutilized_amount=Sum('unutilized_amount'))['total_unutilized_amount'] or 0
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -435,8 +434,8 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
        return Response({}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
 
-    def destroy(self, request, *args, **kwargs):  
-       return Response({}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+   
+
     
 
 class ExpensesDetailsViewSet(viewsets.ModelViewSet, ExpensesDetailsQueryset):
@@ -463,20 +462,132 @@ class ExpensesDetailsViewSet(viewsets.ModelViewSet, ExpensesDetailsQueryset):
         except Expenses.DoesNotExist:
             return Response({"error": "expense not found with given id"}, status=status.HTTP_404_NOT_FOUND)
         data["expense"]=str(expense.id)
-        curr_month = datetime.now().strftime('%B')
-        print("********", curr_month)
-        incomes = IncomeSource.objects.all()#sfilter(month="October").order_by("created_at")
-        print("********",len(incomes))
+        curr_month = request.data.get("month")
+
+        
+        if expense.pending_amount<float(amt):
+            return Response({"error": f"You can not spent {float(amt) - float(expense.pending_amount)} rs extra for {curr_month} month's {expense.expense_type.expense_type} expense."}, status=status.HTTP_404_NOT_FOUND)
+
+       
+        incomes = IncomeSource.objects.filter(month=curr_month, unutilized_amount__gt=0.0).order_by("created_at")
         remain_amt = incomes.aggregate(avail_amt=Sum("unutilized_amount"))["avail_amt"]
-        print("********",remain_amt)
+       
         if remain_amt<=0.0:
             return Response({"error": "Currently we don't have money. We spent all money on expenses."}, status=status.HTTP_404_NOT_FOUND)
         if remain_amt<amt:
             return Response({"error": f"Currently we don't have sufficient money. We have {amt}rs only ."}, status=status.HTTP_404_NOT_FOUND)
+        spend_money(expense,amt,incomes,request)
 
-        serializer = ExpensesDetailsCreateSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save() 
-            spend_money(expense,amt, incomes)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response("ok", status=status.HTTP_201_CREATED)
+    
+
+    def update(self, request, *args, **kwargs):
+        print("update funciton called.")
+        id = kwargs.get('pk')
+        if not id:
+            return Response({"error":""}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            expense_dtl=ExpensesDetails.objects.get(id=id)
+        except ExpensesDetails.DoesNotExist:
+            return Response({"error":"ExpensesDetails does not exist with given id."}, status=status.HTTP_400_BAD_REQUEST)
+        amount = request.data.get('amount', None)
+        curr_month = request.data.get("month",None)
+        income_source = IncomeSource.objects.get(id=expense_dtl.income_sorce_id)
+        expense=Expenses.objects.get(id=expense_dtl.expense_id)
+
+        print("1", expense.spent_amount)
+        if amount:
+            if amount<expense_dtl.amount:
+                print("2", expense.spent_amount)
+                amt_diff = float(expense_dtl.amount) - float(amount)
+                """ update income source"""
+                income_source.unutilized_amount = float(float(income_source.unutilized_amount)) + float(amt_diff)
+                income_source.utilized_amount = float(income_source.utilized_amount) - float(amt_diff)
+
+                income_source.save(update_fields=["unutilized_amount", "utilized_amount"])
+                """ update expense """
+                expense.spent_amount=float(expense.spent_amount) - float(amt_diff)
+                expense.pending_amount = float(expense.pending_amount) + float(amt_diff)
+                expense.save(update_fields=["spent_amount","pending_amount"])
+
+
+                """ update expense details """
+                expense_dtl.amount=float(expense_dtl.amount) - float(amt_diff)
+                expense_dtl.save(update_fields=["amount"])
+
+
+                
+
+            elif float(amount)>float(expense_dtl.amount):
+                print("3", expense.spent_amount)
+                amt_diff =  float(amount) - float(expense_dtl.amount)
+                if float(amt_diff)> float(expense.pending_amount):
+                     return Response({"error": f"You can not spent {float(amount - expense.pending_amount)} rs extra for {curr_month} month's {expense.expense_type.expense_type} expense."}, status=status.HTTP_404_NOT_FOUND)
+                
+                """ update income source"""
+                if float(amt_diff)>float(income_source.unutilized_amount) and float(income_source.unutilized_amount)>0:
+                    remaining_amount = float(amt_diff) - float(float(income_source.unutilized_amount))
+                    ex_untilized_amt= float(income_source.unutilized_amount)
+                    income_source.unutilized_amount = float(income_source.unutilized_amount) -  float(income_source.unutilized_amount)
+                    income_source.utilized_amount = float(income_source.utilized_amount) + float(ex_untilized_amt)
+                    incomes = IncomeSource.objects.filter(month=curr_month, unutilized_amount__gt=0.0).order_by("created_at")
+                    remain_amt = incomes.aggregate(avail_amt=Sum("unutilized_amount"))["avail_amt"]
+                    if remain_amt<=0.0:
+                        return Response({"error": "Currently we don't have money. We spent all money on expenses."}, status=status.HTTP_404_NOT_FOUND)
+                    if remain_amt<remaining_amount:
+                        return Response({"error": f"Currently we don't have sufficient money. We have {remain_amt}rs only ."}, status=status.HTTP_404_NOT_FOUND)
+                    
+
+                    if (float(expense.spent_amount) + float(ex_untilized_amt)) == float(expense.amount):
+                        expense.status="done"
+                    else:
+                        expense.status="pending"
+
+
+                    expense.spent_amount=float(expense.spent_amount) + float(ex_untilized_amt)
+                    expense.pending_amount = float(expense.pending_amount )- float(ex_untilized_amt)
+                    expense.save(update_fields=["spent_amount","pending_amount","status"])
+
+                    """ update expense details """
+                    expense_dtl.amount=float(expense_dtl.amount) + float(ex_untilized_amt)
+                    expense_dtl.save(update_fields=["amount"])
+                    income_source.save(update_fields=["unutilized_amount","utilized_amount"])
+                    if remaining_amount>0.0:
+                        spend_money(expense,remaining_amount, incomes, request)
+
+                elif float(amt_diff)>float(income_source.unutilized_amount) and float(income_source.unutilized_amount)==0.0:
+                    incomes = IncomeSource.objects.filter(month=curr_month, unutilized_amount__gt=0.0).order_by("created_at")
+                    remain_amt = incomes.aggregate(avail_amt=Sum("unutilized_amount"))["avail_amt"]
+                    spend_money(expense,amt_diff, incomes, request)
+                elif float(amt_diff)<=float(income_source.unutilized_amount):               
+                    
+                    income_source.unutilized_amount = float(float(income_source.unutilized_amount)) - float(amt_diff)
+                    income_source.utilized_amount = float(income_source.utilized_amount) + float(amt_diff)
+                    income_source.save(update_fields=["unutilized_amount","utilized_amount"])
+
+                    """ update expense details """
+                    expense_dtl.amount=float(expense_dtl.amount) + float(amt_diff)
+                    expense_dtl.save(update_fields=["amount"])
+                    income_source.save(update_fields=["unutilized_amount","utilized_amount"])
+                    
+
+                    """ update expense  """
+                    if (float(expense.spent_amount) + float(amt_diff)) == float(expense.amount):
+                        expense.status="done"
+                    else:
+                        expense.status="pending"
+
+                    expense.spent_amount=float(expense.spent_amount) + float(amt_diff)
+                    expense.pending_amount = float(expense.pending_amount) - float(amt_diff)
+                    expense.save(update_fields=["spent_amount","pending_amount","status"])
+
+
+            
+
+        serializer = ExpensesDetailsUpdateSerializer(expense_dtl, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        expense_dt=serializer.save()
+        serializer=ExpensesDetailsSerializer(expense_dt)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    

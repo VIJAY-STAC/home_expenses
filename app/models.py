@@ -75,6 +75,9 @@ class IncomeSource(PrimaryUUIDTimeStampedModel):  # Remove AbstractUser inherita
     amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10)
     unutilized_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
     utilized_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10,default=0.0)
+
+    def __str__(self):
+        return self.user.full_name
     
 
 
@@ -123,10 +126,28 @@ class ExpensesDetails(PrimaryUUIDTimeStampedModel):
         on_delete=models.PROTECT,
         related_name="user_expenses"
     )
+    income_sorce = models.ForeignKey(
+        IncomeSource,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="expenses_income_source"
+    )
     date = models.DateField(null=False, blank=False)
     month = models.CharField(max_length=50, choices=MONTH_CHOICES, null=False, blank=False)
     amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10)
     notes = models.TextField(blank=True, max_length=100)
 
+
     def __str__(self):
         return self.expense.expense_type.expense_type
+    
+
+class BusinessTermsTable(PrimaryUUIDTimeStampedModel):
+    term_name = models.CharField(max_length=30, null=False, unique=True, db_index=True)
+    term_value = models.CharField(max_length=30, null=False)
+    
+
+class BulkBuyerResvStock(PrimaryUUIDTimeStampedModel):
+    notes = models.TextField(blank=True, max_length=100)
+    last_synced_at = models.DateTimeField(null=True,blank=True)
