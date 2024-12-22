@@ -450,8 +450,14 @@ class ExpensesTypeViewSet(viewsets.ModelViewSet, ExpensesTypeSourceQueryset):
         queryset = self.custom_get_queryset()
         return queryset
     
-    def destroy(self, request, *args, **kwargs):  
-       return Response({}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    @action(detail=False, methods=["delete"])
+    def delete_expense_type_record(self, request,*args,**kwargs):
+        ExpensesType.objects.all().delete()
+
+        return Response("record deleted", status=status.HTTP_200_OK)
+    
+
+
     
 class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
     model = Expenses
