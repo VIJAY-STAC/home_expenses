@@ -71,6 +71,7 @@ class IncomeSource(PrimaryUUIDTimeStampedModel):  # Remove AbstractUser inherita
     )
     date = models.DateField(null=False, blank=False)
     month = models.CharField(max_length=50, choices=MONTH_CHOICES, null=False, blank=False)
+    year = models.CharField(max_length=5,null=True,blank=True)
     income_source = models.CharField(null=False, blank=False,max_length=50)
     amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10)
     unutilized_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
@@ -84,9 +85,14 @@ class IncomeSource(PrimaryUUIDTimeStampedModel):  # Remove AbstractUser inherita
     
 class ExpensesType(PrimaryUUIDTimeStampedModel):
     expense_type = models.CharField(max_length=30)
+    amount = models.DecimalField(max_digits=10,decimal_places=2,null=True, blank=True)
+    discription = models.CharField(max_length=30,null=True, blank=True)
+    priority = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.expense_type
+    
+    
 
 
 class Expenses(PrimaryUUIDTimeStampedModel):
@@ -103,6 +109,7 @@ class Expenses(PrimaryUUIDTimeStampedModel):
     spent_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
     pending_amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10, default=0.0)
     status = models.CharField(max_length=30, choices=EXPENSES_STATUS, default="pending")
+    year = models.CharField(max_length=5,null=True,blank=True)
     note=models.TextField(max_length=10, null=True, blank=True)
     note2=models.TextField(max_length=10, null=True, blank=True)
 
@@ -135,6 +142,7 @@ class ExpensesDetails(PrimaryUUIDTimeStampedModel):
     )
     date = models.DateField(null=False, blank=False)
     month = models.CharField(max_length=50, choices=MONTH_CHOICES, null=False, blank=False)
+    year = models.CharField(max_length=5,null=True,blank=True)
     amount = models.DecimalField(decimal_places=2, null=False, blank=False, max_digits=10)
     notes = models.TextField(blank=True, max_length=100)
 

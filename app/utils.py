@@ -1,7 +1,7 @@
 
 import uuid
 from django.db import models
-
+from datetime import datetime, timedelta
 import base64
 import string 
 from django.core.cache import cache
@@ -9,7 +9,7 @@ from django.utils.crypto import get_random_string
 from django.conf import settings
 from django.core.mail import send_mail
 
-from .models import ExpensesDetails, IncomeSource
+from .models import Expenses, ExpensesDetails, IncomeSource
 
 def verify_otp(user_id, otp):
     PASSWORD_RESET_KEY = "user_password_reset_key.{otp_key}"
@@ -134,4 +134,74 @@ def spend_money(expense, amt, incomes, request):
         IncomeSource.objects.bulk_update(update_rows, ["utilized_amount", "unutilized_amount"])
 
     
+    return True
+
+
+def settle_income(income_source_instance,request):
+
+    date=str(datetime.now().date())
+    year = date.split('-')[0]
+    current_datetime = datetime.now()
+    month_name = current_datetime.strftime('%B').lower()
+
+    expenses = Expenses.objects.filter(year=year,month=month_name,status="pending").order_by("expense_type__priority")
+                
+    amount=income_source_instance.unutilized_amount
+    update_expense = []
+    create_expense_dtl =[]
+    used_amt = 0.0
+    for expense in expenses:
+        print("amt",amount)
+        if amount>0.0:
+            expense_dtl = ExpensesDetails(
+                expense=expense,
+                user=request.user,
+                income_sorce=income_source_instance,
+                date=date,
+                month=month_name,
+                year=year,
+                notes="Auto setteled"
+
+            )
+        
+            ex_pending = float(expense.pending_amount)
+            print("ex_pending",ex_pending)
+            if amount>=ex_pending:
+                print("amount is greater")
+                expense.pending_amount=float(expense.pending_amount)- ex_pending
+                expense.spent_amount = float(expense.spent_amount) + ex_pending
+                expense.status = "done"
+                update_expense.append(expense)
+
+                expense_dtl.amount= ex_pending
+                amount= amount - ex_pending
+                print(ex_pending)
+                used_amt = used_amt + ex_pending
+                print(used_amt)
+
+            elif amount<ex_pending:
+                print("amount is less")
+                expense.pending_amount=float(expense.pending_amount) - amount
+                expense.spent_amount = float(expense.spent_amount) + amount
+                expense.status = "pending"
+                update_expense.append(expense)
+                expense_dtl.amount= amount
+                used_amt = used_amt + amount
+                amount= amount - amount
+                
+                print(used_amt)
+        else:
+            break
+
+        create_expense_dtl.append(expense_dtl)
+    ExpensesDetails.objects.bulk_create(create_expense_dtl, ignore_conflicts=True)
+    Expenses.objects.bulk_update(update_expense,["pending_amount","spent_amount","status"])
+   
+    print(used_amt)
+    print(income_source_instance.unutilized_amount)
+    print(income_source_instance.utilized_amount)
+
+    income_source_instance.unutilized_amount=income_source_instance.unutilized_amount - used_amt
+    income_source_instance.utilized_amount=float(income_source_instance.utilized_amount) + used_amt
+    income_source_instance.save()
     return True

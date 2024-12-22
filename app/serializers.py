@@ -42,6 +42,7 @@ class IncomeSourceCreateSerializer(serializers.ModelSerializer):
             "user",
             "date",
             "month",
+            "year",
             "income_source",
             "amount",
             "unutilized_amount"
@@ -73,7 +74,10 @@ class ExpensesTypeSerializer(serializers.ModelSerializer):
         fields = ( 
             "id",
             "created_at",
-            "expense_type"
+            "expense_type",
+            "amount",
+            "discription",
+            "priority"
          )
 
 
@@ -100,6 +104,7 @@ class ExpensesSerializer(serializers.ModelSerializer):
             "expense_type",
             "month",
             "date",
+            "year",
             "amount",
             "spent_amount",
             "pending_amount",

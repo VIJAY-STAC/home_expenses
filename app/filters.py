@@ -48,6 +48,7 @@ class IncomeSourceFilter(django_filters.FilterSet):
         fields = {
             
             'month': ['exact'],
+            'year': ['exact'],
         }
 
 
@@ -82,7 +83,7 @@ class ExpensesFilter(django_filters.FilterSet):
     
     class Meta:
         model = Expenses
-        fields = ["date", "month", "amount","status"]
+        fields = ["date", "month", "year","amount","status"]
 
 
 class  ExpensesDetailsFilter(django_filters.FilterSet):
@@ -113,7 +114,7 @@ class  ExpensesDetailsFilter(django_filters.FilterSet):
     
     class Meta:
         model = ExpensesDetails
-        fields = ["date", "month", "amount"]
+        fields = ["date", "month","year", "amount"]
 
 
 class ExpensesTypeFilter(django_filters.FilterSet):

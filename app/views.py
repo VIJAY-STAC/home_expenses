@@ -15,7 +15,7 @@ from .pagination import CommanPagination
 from django.db.models.functions import TruncSecond
 from .querysets import ExpensesDetailsQueryset, ExpensesQueryset, ExpensesTypeSourceQueryset, IncomeSourceQueryset, UserQueryset
 from .filters import ExpensesDetailsFilter, ExpensesFilter, ExpensesTypeFilter, IncomeSourceFilter, UserFilter
-from .utils import generate_otp_and_key, send_custom_email, spend_money
+from .utils import generate_otp_and_key, send_custom_email, settle_income, spend_money
 from .serializers import ExpensesCreateSerializer, ExpensesDetailsCreateSerializer, ExpensesDetailsSerializer, ExpensesDetailsUpdateSerializer, ExpensesSerializer, ExpensesTypeSerializer, FamilyMemberSerializer, IncomeSourceCreateSerializer, IncomeSourceSerializer, UserRoleSerializer, UserSerializer
 from .models import BulkBuyerResvStock, BusinessTermsTable, Expenses, ExpensesType, IncomeSource, User, ExpensesDetails
 from datetime import datetime, timedelta
@@ -23,7 +23,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import Group
 from rest_framework import parsers, status, permissions, viewsets
 from django_filters.rest_framework import DjangoFilterBackend
-
+from django.db import transaction
 from django.db.models import Q
 User = get_user_model()
 
@@ -259,38 +259,154 @@ class IncomeSourceViewSet(viewsets.ModelViewSet, IncomeSourceQueryset):
     def create(self, request, *args, **kwargs):
         if request.user.user_type !="admin":
             return Response({"error": "You do not have permissions to perform this operations"}, status=status.HTTP_404_NOT_FOUND)
-        
-        data = request.data
-        data["unutilized_amount"]=data["amount"]
-        serializer = IncomeSourceCreateSerializer(data=data)
-        if serializer.is_valid():
-            income_source_instance = serializer.save()  # Save the instance
-            response_serializer = IncomeSourceSerializer(income_source_instance)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+        with transaction.atomic():
+            data = request.data
+            month = request.data.get('month', None)
+            amount = request.data.get('amount', None)
+            date = request.data.get('date', None)
+            year = date.split('-')[0]
+            data["unutilized_amount"]=data["amount"]
+            data["year"]=year
+
+
+            serializer = IncomeSourceCreateSerializer(data=data)
+            if serializer.is_valid():
+                income_source_instance = serializer.save()  # Save the instance
+                current_year = year
+                expenses = Expenses.objects.filter(year=current_year,month=month,status="pending").order_by("expense_type__priority")
+                
+
+                if not  expenses.exists():
+                    return Response({"message": "income source added successfully"}, status=status.HTTP_201_CREATED)
+
+                update_expense = []
+                create_expense_dtl =[]
+
+            
+                for expense in expenses:
+                    expense_dtl = ExpensesDetails(
+                        expense=expense,
+                        user=request.user,
+                        income_sorce=income_source_instance,
+                        date=date,
+                        month=month,
+                        year=year,
+                        notes="Auto setteled"
+
+                    )
+                    if amount>0.0:
+                        ex_pending = float(expense.pending_amount)
+                        if amount>=ex_pending:
+                            expense.pending_amount=float(expense.pending_amount)- ex_pending
+                            expense.spent_amount = float(expense.spent_amount) + ex_pending
+                            expense.status = "done"
+                            update_expense.append(expense)
+                            expense_dtl.amount= ex_pending
+                            amount= amount - ex_pending
+
+                        elif amount<ex_pending:
+                            expense.pending_amount=float(expense.pending_amount) - amount
+                            expense.spent_amount = float(expense.spent_amount) + amount
+                            expense.status = "pending"
+                            update_expense.append(expense)
+                            expense_dtl.amount= amount
+                            amount= amount - amount
+
+                    create_expense_dtl.append(expense_dtl)
+                ExpensesDetails.objects.bulk_create(create_expense_dtl, ignore_conflicts=True)
+                Expenses.objects.bulk_update(update_expense,["pending_amount","spent_amount","status"])
+                income_source_instance.unutilized_amount=amount
+                income_source_instance.utilized_amount=float(income_source_instance.amount) - amount
+                income_source_instance.save()
+                response_serializer = IncomeSourceSerializer(income_source_instance)
+                return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
         
 
     def update(self, request, *args, **kwargs):
-        if request.user.user_type !="admin":
-            return Response({"error": "You do not have permissions to perform this operations"}, status=status.HTTP_404_NOT_FOUND)
-        
-        id = kwargs.get('pk')
-        data=request.data
-        if not id:
-            return Response({"error":"Income source id is missing"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            income_souce=IncomeSource.objects.get(id=id)
-        except IncomeSource.DoesNotExist:
-            return Response({"error":"IncomeSource does not exist with given id."}, status=status.HTTP_400_BAD_REQUEST)
-        if income_souce.utilized_amount>data["amount"]:
-            return Response({"error":"Income source amount should be greater than utilized income amount."}, status=status.HTTP_400_BAD_REQUEST)
-       
-        data["unutilized_amount"]=data["amount"]- float(income_souce.utilized_amount)
-        serializer = IncomeSourceCreateSerializer(income_souce, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        income_souce=serializer.save()
-        serializer=IncomeSourceSerializer(income_souce)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        with transaction.atomic():
+            if request.user.user_type !="admin":
+                return Response({"error": "You do not have permissions to perform this operations"}, status=status.HTTP_404_NOT_FOUND)
+            id = kwargs.get('pk')
+            if not id:
+                return Response({"error":"Income source id is missing"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                income_souce=IncomeSource.objects.get(id=id)
+            except IncomeSource.DoesNotExist:
+                return Response({"error":"IncomeSource does not exist with given id."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            print("Calculations started")
+            new_amount= request.data.get('amount', None)
+            ex_amount = float(income_souce.amount)
+            update_expense_dtl =[]
+            delete_expense_dtl = []
+            update_expense = []
+            if new_amount>ex_amount:
+                amt_add = new_amount - ex_amount
+                income_souce.amount=new_amount
+                income_souce.unutilized_amount= float(income_souce.unutilized_amount) + amt_add
+                income_souce.save()
+                settle_income(income_souce,request)
+            
+            elif new_amount<ex_amount:
+                print("New amount", new_amount)
+                print("Ex amount", ex_amount)
+                set_income = 0.0
+                amt_diff = ex_amount - new_amount
+                if income_souce.unutilized_amount>0.0:
+                    if income_souce.unutilized_amount>=amt_diff:
+                        print("unutilized amount is less")
+                        income_souce.amount=new_amount
+                        income_souce.unutilized_amount= float(income_souce.unutilized_amount) - amt_diff
+                        income_souce.save()
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                    elif income_souce.unutilized_amount<amt_diff:
+                        print("unutilized amount is less")
+                        amt_diff = amt_diff - float(income_souce.unutilized_amount)
+                        income_souce.amount=new_amount
+                        income_souce.unutilized_amount= 0.0
+                        income_souce.utilized_amount= float(income_souce.utilized_amount) - amt_diff
+                        income_souce.save()
+
+                elif income_souce.unutilized_amount==0.0:
+                    income_souce.amount=new_amount
+                    income_souce.utilized_amount= float(income_souce.utilized_amount) - amt_diff
+                    income_souce.save()
+                print("amt_diff", amt_diff)
+                setteled_expenses = ExpensesDetails.objects.filter(income_sorce_id=income_souce.id).order_by("-created_at")
+                for settlement in setteled_expenses:
+                    if amt_diff>0.0:
+                        print("deduction amount available ")
+                        print("settlement",settlement.expense.expense_type.expense_type)
+                        if amt_diff>=float(settlement.amount):
+                            print("dedcution amount is greater than settled amount")
+                            expen = Expenses.objects.get(id=settlement.expense_id)
+                            expen.spent_amount=expen.spent_amount - settlement.amount
+                            expen.pending_amount=expen.pending_amount + settlement.amount
+                            expen.status="pending"
+                            update_expense.append(expen)
+                            delete_expense_dtl.append(settlement.id)
+                            amt_diff = amt_diff - float(settlement.amount)
+                            set_income = set_income + float(settlement.amount)
+
+                        elif amt_diff<float(settlement.amount):
+                            print("dedcution amount is less than settled amount")
+                            expen = Expenses.objects.get(id=settlement.expense_id)
+                            expen.spent_amount=float(expen.spent_amount) - amt_diff
+                            expen.pending_amount=float(expen.pending_amount) + amt_diff
+                            expen.status="pending"
+                            update_expense.append(expen)
+                            settlement.amount=float(settlement.amount)- amt_diff
+                            update_expense_dtl.append(settlement)
+                            set_income = set_income + amt_diff
+                            amt_diff = amt_diff - amt_diff
+                ExpensesDetails.objects.bulk_update(update_expense_dtl,["amount"])
+                ExpensesDetails.objects.filter(id__in=delete_expense_dtl).delete()
+                Expenses.objects.bulk_update(update_expense,["spent_amount","pending_amount","status"])
+            serializer=IncomeSourceSerializer(income_souce)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
     
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -354,7 +470,6 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
 
     @action(detail=False, methods=["post"])
     def create_expenses(self, request, *args, **kwargs):
-
         if request.user.user_type !="admin":
             return Response({"error": "You do not have permissions to perform this operations"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -374,6 +489,52 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
+    @action(detail=False, methods=["post"])
+    def bulk_expenses(self, request, *args, **kwargs):
+        year = request.data.get("year", None)
+        if year is None:
+            return Response({"error":"Please enter year."},status=status.HTTP_400_BAD_REQUEST)
+        query = Expenses.objects.filter(year=year)
+        if query.exists():
+             return Response({"error":f"Expenses alrady created for {year} Year."},status=status.HTTP_400_BAD_REQUEST)
+
+        months = {
+                    1:"janurary",
+                    2:"february",
+                    3:"march",
+                    4:"april",
+                    5:"may",
+                    6:"june",
+                    7:"july",
+                    8:"august",
+                    9:"september",
+                    10:"october",
+                    11:"november",
+                    12:"december"
+
+        }
+        
+        expes_types = ExpensesType.objects.all()
+        create_expenses = []
+        for i in range(1, 13):
+            for exp in expes_types:
+                expense =Expenses(
+                    expense_type=exp,
+                    date=f"{year}-{i}-01",
+                    month=months[i],
+                    year=year,
+                    amount=exp.amount,
+                    spent_amount=0.0,
+                    pending_amount=exp.amount,
+                    status="pending"
+                )
+                create_expenses.append(expense)
+        Expenses.objects.bulk_create(create_expenses)
+        return Response({"message":"bulk_expenses created."},status=status.HTTP_200_OK)
+
+
+    
+
 
     def update(self, request, *args, **kwargs):
         if request.user.user_type !="admin":
@@ -391,13 +552,33 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
 
         if expense.spent_amount>amount:
             return Response({"error":"Expense amount should greater than  spent amount of expese."}, status=status.HTTP_400_BAD_REQUEST)
-    
-        data["pending_amount"]=data["amount"]- float(expense.spent_amount)
-        serializer = ExpensesCreateSerializer(expense, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        expense=serializer.save()
+        new_amount = float(amount)
+        ex_amount = float(expense.amount)
+        if new_amount>ex_amount:
+            add_amt = new_amount - ex_amount
+            expense.pending_amount=float(expense.pending_amount) + add_amt
+            expense.status="pending"
+            
+        elif new_amount<ex_amount:
+            reduce_amt = ex_amount - new_amount
+            expense.pending_amount=float(expense.pending_amount) - reduce_amt
+            if expense.pending_amount==0.0:
+                expense.status="paid"
+
+        expense.amount=new_amount
+        expense.save()
         serializer=ExpensesSerializer(expense)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["delete"])
+    def delete_record(self, request,*args,**kwargs):
+        if request.user.user_type !="admin":
+            return Response({"error": "You do not have permissions to perform this operations"}, status=status.HTTP_400_BAD_REQUEST)
+         
+        ExpensesDetails.objects.all().delete()
+        IncomeSource.objects.all().delete()
+        Expenses.objects.all().delete()
+        return Response({"success": True}, status=status.HTTP_200_OK)
     
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -433,11 +614,6 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
     def destroy(self, request, *args, **kwargs):  
        return Response({}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
-
-   
-
-    
-
 class ExpensesDetailsViewSet(viewsets.ModelViewSet, ExpensesDetailsQueryset):
     model = ExpensesDetails
     serializer_class = ExpensesDetailsSerializer
@@ -581,8 +757,6 @@ class ExpensesDetailsViewSet(viewsets.ModelViewSet, ExpensesDetailsQueryset):
                     expense.pending_amount = float(expense.pending_amount) - float(amt_diff)
                     expense.save(update_fields=["spent_amount","pending_amount","status"])
 
-
-            
 
         serializer = ExpensesDetailsUpdateSerializer(expense_dtl, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)

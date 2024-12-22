@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import BulkBuyerResvStock, BusinessTermsTable, Expenses, ExpensesDetails, User, IncomeSource
+from .models import BulkBuyerResvStock, BusinessTermsTable, Expenses, ExpensesDetails, ExpensesType, User, IncomeSource
 
 class UserAdmin(BaseUserAdmin):
     # Define what fields to display in the admin list view
@@ -34,23 +34,23 @@ admin.site.register(User, UserAdmin)
 
 
 class IncomeSourceAdmin(admin.ModelAdmin):
-    list_display = ("created_at","user","date", "month","amount", "income_source","amount","unutilized_amount","utilized_amount")
+    list_display = ("created_at","user","date", "month","year","amount", "income_source","amount","unutilized_amount","utilized_amount")
 admin.site.register(IncomeSource, IncomeSourceAdmin)
 
 
 
 
 class ExpensesAdmin(admin.ModelAdmin):
-    list_display = ("expense_type","date", "month","amount","spent_amount","pending_amount","status")
+    list_display = ("expense_type","date","year", "month","amount","spent_amount","pending_amount","status")
 admin.site.register(Expenses, ExpensesAdmin)
 
-
-
-
+class ExpensesTypesAdmin(admin.ModelAdmin):
+    list_display = ("id","expense_type","amount","discription","priority")
+admin.site.register(ExpensesType, ExpensesTypesAdmin)
 
 
 class ExpensesDetailsAdmin(admin.ModelAdmin):
-    list_display = ("created_at","expense","income_sorce","date", "month","user","amount","notes")
+    list_display = ("created_at","expense","income_sorce","date", "month","year","user","amount","notes")
 admin.site.register(ExpensesDetails, ExpensesDetailsAdmin)
 
 
