@@ -11,7 +11,10 @@ router.register(r"expenses",ExpensesViewSet,basename="expenses")
 router.register(r"expenses_details",ExpensesDetailsViewSet,basename="expenses_details")
 
 
-
+def trigger_error(request):
+    division_by_zero = 1 / 0
+    
 urlpatterns = [
+    path('sentry-debug/', trigger_error),
     path('api/v1/',include(router.urls))
 ]

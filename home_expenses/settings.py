@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import sentry_sdk
 from pathlib import Path
 from datetime import timedelta
 import environ
@@ -234,3 +234,17 @@ server {
 }
 
 """
+
+
+sentry_sdk.init(
+    dsn="https://913bfa3bf3c828e32ea40c8e4ebd8f93@o4508511393284096.ingest.us.sentry.io/4508511405473792",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for tracing.
+    traces_sample_rate=1.0,
+    _experiments={
+        # Set continuous_profiling_auto_start to True
+        # to automatically start the profiler on when
+        # possible.
+        "continuous_profiling_auto_start": True,
+    },
+)
