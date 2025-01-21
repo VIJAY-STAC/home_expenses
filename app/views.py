@@ -286,7 +286,7 @@ class IncomeSourceViewSet(viewsets.ModelViewSet, IncomeSourceQueryset):
                 for expense in expenses:
                     expense_dtl = ExpensesDetails(
                         expense=expense,
-                        user=request.user,
+                        user=income_source_instance.user,
                         income_sorce=income_source_instance,
                         date=date,
                         month=month,
