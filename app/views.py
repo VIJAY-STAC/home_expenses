@@ -135,10 +135,10 @@ class UserViewSet(viewsets.ModelViewSet, UserQueryset):
                 'pincode': user.pincode,
                 'latitude': user.latitude,
                 'longitude': user.longitude,
-                "success": True
+                "success": True,
+                "test": False,
                
             }
-
             return Response(user_details, status=status.HTTP_200_OK)
         except KeyError:
             res = {'error': 'Please provide an email and a password'}
@@ -453,10 +453,8 @@ class ExpensesTypeViewSet(viewsets.ModelViewSet, ExpensesTypeSourceQueryset):
     @action(detail=False, methods=["delete"])
     def delete_expense_type_record(self, request,*args,**kwargs):
         ExpensesType.objects.all().delete()
-
         return Response("record deleted", status=status.HTTP_200_OK)
     
-
 
     
 class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
@@ -505,7 +503,7 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
              return Response({"error":f"Expenses alrady created for {year} Year."},status=status.HTTP_400_BAD_REQUEST)
 
         months = {
-                    1:"janurary",
+                    1:"january",
                     2:"february",
                     3:"march",
                     4:"april",
@@ -578,12 +576,17 @@ class ExpensesViewSet(viewsets.ModelViewSet, ExpensesQueryset):
     
     @action(detail=False, methods=["delete"])
     def delete_record(self, request,*args,**kwargs):
+        year = request.query_params.get('year', None)
         if request.user.user_type !="admin":
             return Response({"error": "You do not have permissions to perform this operations"}, status=status.HTTP_400_BAD_REQUEST)
-         
-        ExpensesDetails.objects.all().delete()
-        IncomeSource.objects.all().delete()
-        Expenses.objects.all().delete()
+        if year:
+            ExpensesDetails.objects.filter(year=year).delete()
+            IncomeSource.objects.filter(year=year).delete()
+            Expenses.objects.filter(year=year).delete()
+        else:
+            ExpensesDetails.objects.all().delete()
+            IncomeSource.objects.all().delete()
+            Expenses.objects.all().delete()
         return Response({"success": True}, status=status.HTTP_200_OK)
     
     def list(self, request, *args, **kwargs):

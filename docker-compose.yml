@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: home_expense_app
+    volumes:
+      - .:/app                  
+    ports:
+      - "8000:8000"              
+    environment:
+      - DEBUG=True              

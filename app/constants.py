@@ -17,7 +17,7 @@ PAYMENT_TYPE = (
 
 
 MONTH_CHOICES = [
-    ('janurary', 'January'),
+    ('january', 'January'),
     ('february', 'February'),
     ('march', 'March'),
     ('april', 'April'),
